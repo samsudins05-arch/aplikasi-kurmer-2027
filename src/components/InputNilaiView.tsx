@@ -319,7 +319,7 @@ export const InputNilaiView: React.FC<InputNilaiViewProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                Input Nilai Rapor & Penilaian TP (TP 1 – TP 4)
+                Nilai Rapor TP (TP 1 – TP 4)
               </h2>
               <p className="text-xs text-slate-500">
                 SDN Babelan Kota 01 | {rombelData.identity.kelas} - {rombelData.identity.rombel} | Semester {rombelData.identity.semester}
