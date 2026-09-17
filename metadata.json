@@ -1,6 +1,6 @@
 {
   "name": "Rapor Kurikulum Merdeka SD",
-  "description": "Aplikasi Web Rapor Kurikulum Merdeka SD berbasis spreadsheet/Excel terpisah untuk 27 rombel dengan input nilai, rekapitulasi, cetak rapor resmi A4, dan import/export XLSX.",
+  "description": "Aplikasi Web Rapor Kurikulum Merdeka SD berbasis spreadsheet/Excel terpisah untuk seluruh rombel kelas dengan input nilai, rekapitulasi, cetak rapor resmi A4, dan import/export XLSX.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

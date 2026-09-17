@@ -51,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           id="btn-nav-portal"
           onClick={onBackToPortal}
-          title="Kembali ke Daftar 27 Rombel"
+          title="Kembali ke Daftar Rombel"
           className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />

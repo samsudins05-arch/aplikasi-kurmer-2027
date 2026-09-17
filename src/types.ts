@@ -38,6 +38,7 @@ export const ALL_ROMBELS: RombelInfo[] = [
   { id: '5B', grade: 5, name: 'Kelas 5B', phase: 'Fase C' },
   { id: '5C', grade: 5, name: 'Kelas 5C', phase: 'Fase C' },
   { id: '5D', grade: 5, name: 'Kelas 5D', phase: 'Fase C' },
+  { id: '5E', grade: 5, name: 'Kelas 5E', phase: 'Fase C' },
 
   // Kelas 6 (Fase C)
   { id: '6A', grade: 6, name: 'Kelas 6A', phase: 'Fase C' },
