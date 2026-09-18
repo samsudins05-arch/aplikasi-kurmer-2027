@@ -12,7 +12,9 @@ import {
   Download,
   AlertTriangle,
   UserCheck,
+  FileText,
 } from 'lucide-react';
+import { EditBiodataModal } from './EditBiodataModal';
 
 interface DataSiswaViewProps {
   rombelData: RombelData;
@@ -32,6 +34,7 @@ export const DataSiswaView: React.FC<DataSiswaViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [biodataStudent, setBiodataStudent] = useState<Student | null>(null);
 
   // Form State for Add / Edit
   const [formData, setFormData] = useState<Omit<Student, 'student_id'>>({
@@ -159,6 +162,17 @@ export const DataSiswaView: React.FC<DataSiswaViewProps> = ({
     }
   };
 
+  const handleSaveBiodata = (updatedStudent: Student) => {
+    setRombelData((prev) => ({
+      ...prev,
+      students: prev.students.map((s) =>
+        s.student_id === updatedStudent.student_id ? updatedStudent : s
+      ),
+    }));
+    markDirty();
+    setBiodataStudent(null);
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header controls */}
@@ -276,18 +290,26 @@ export const DataSiswaView: React.FC<DataSiswaViewProps> = ({
                     {s.alamat ? `${s.alamat}, ${s.desaKelurahan}` : <span className="text-slate-300">-</span>}
                   </td>
                   <td className="py-3 px-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => setBiodataStudent(s)}
+                        title="Edit Biodata Lengkap (Gambar 3.1) & Pas Foto"
+                        className="px-2 py-1 text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition-colors flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+                      >
+                        <FileText className="w-3 h-3" />
+                        <span className="hidden sm:inline">Biodata (3.1)</span>
+                      </button>
                       <button
                         onClick={() => handleOpenEdit(s)}
-                        title="Edit Data Siswa"
-                        className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
+                        title="Edit Data Siswa Singkat"
+                        className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDeleteStudent(s)}
                         title="Hapus Siswa"
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -505,6 +527,15 @@ export const DataSiswaView: React.FC<DataSiswaViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal Biodata Peserta Didik (Gambar 3.1) */}
+      {biodataStudent && (
+        <EditBiodataModal
+          student={biodataStudent}
+          onSave={handleSaveBiodata}
+          onClose={() => setBiodataStudent(null)}
+        />
       )}
     </div>
   );

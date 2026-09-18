@@ -36,11 +36,19 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
   const [namaKepalaSekolah, setNamaKepalaSekolah] = useState(rombelData.identity.namaKepalaSekolah || '');
   const [nipKepalaSekolah, setNipKepalaSekolah] = useState(rombelData.identity.nipKepalaSekolah || '');
   const [namaSekolah, setNamaSekolah] = useState(rombelData.identity.namaSekolah || 'SDN BABELAN KOTA 01');
-  const [npsn, setNpsn] = useState(rombelData.identity.npsn || '20219135');
+  const [npsn, setNpsn] = useState(rombelData.identity.npsn || '20218359');
+  const [nisNssNds, setNisNssNds] = useState(rombelData.identity.nisNssNds || '101020501001');
   const [logoUrl, setLogoUrl] = useState(
     rombelData.identity.logoUrl || 'https://i.ibb.co.com/gb2y0gwD/logo-bakot-01.png'
   );
-  const [alamatSekolah, setAlamatSekolah] = useState(rombelData.identity.alamatSekolah || '');
+  const [alamatSekolah, setAlamatSekolah] = useState(rombelData.identity.alamatSekolah || 'Kp. Babelan RT. 009 RW. 002');
+  const [kodePos, setKodePos] = useState(rombelData.identity.kodePos || '17610');
+  const [desaKelurahan, setDesaKelurahan] = useState(rombelData.identity.desaKelurahan || 'Babelan Kota');
+  const [kecamatan, setKecamatan] = useState(rombelData.identity.kecamatan || 'Babelan');
+  const [kabupaten, setKabupaten] = useState(rombelData.identity.kabupaten || 'Kabupaten Bekasi');
+  const [provinsi, setProvinsi] = useState(rombelData.identity.provinsi || 'Jawa Barat');
+  const [websiteSekolah, setWebsiteSekolah] = useState(rombelData.identity.websiteSekolah || 'https://sdnbabelankota01.sch.id');
+  const [emailSekolah, setEmailSekolah] = useState(rombelData.identity.emailSekolah || 'sdn.babelankota01@gmail.com');
   const [tahunPelajaran, setTahunPelajaran] = useState(rombelData.identity.tahunPelajaran || '2026/2027');
   const [semester, setSemester] = useState(rombelData.identity.semester || '1 (Ganjil)');
   const [tempatTanggalRapor, setTempatTanggalRapor] = useState(
@@ -69,8 +77,16 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
         nipKepalaSekolah,
         namaSekolah,
         npsn,
+        nisNssNds,
         logoUrl,
         alamatSekolah,
+        kodePos,
+        desaKelurahan,
+        kecamatan,
+        kabupaten,
+        provinsi,
+        websiteSekolah,
+        emailSekolah,
         tahunPelajaran,
         semester,
         tempatTanggalRapor,
@@ -370,6 +386,18 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
+                  NIS / NSS / NDS
+                </label>
+                <input
+                  type="text"
+                  value={nisNssNds}
+                  onChange={(e) => setNisNssNds(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
                   Tahun Pelajaran
                 </label>
                 <input
@@ -402,6 +430,90 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
                   type="text"
                   value={alamatSekolah}
                   onChange={(e) => setAlamatSekolah(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Kelurahan / Desa
+                </label>
+                <input
+                  type="text"
+                  value={desaKelurahan}
+                  onChange={(e) => setDesaKelurahan(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Kecamatan
+                </label>
+                <input
+                  type="text"
+                  value={kecamatan}
+                  onChange={(e) => setKecamatan(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Kota / Kabupaten
+                </label>
+                <input
+                  type="text"
+                  value={kabupaten}
+                  onChange={(e) => setKabupaten(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Provinsi
+                </label>
+                <input
+                  type="text"
+                  value={provinsi}
+                  onChange={(e) => setProvinsi(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Kode Pos
+                </label>
+                <input
+                  type="text"
+                  value={kodePos}
+                  onChange={(e) => setKodePos(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Website Sekolah
+                </label>
+                <input
+                  type="text"
+                  value={websiteSekolah}
+                  onChange={(e) => setWebsiteSekolah(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-semibold text-slate-700 mb-1">
+                  E-mail Sekolah
+                </label>
+                <input
+                  type="email"
+                  value={emailSekolah}
+                  onChange={(e) => setEmailSekolah(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                 />
               </div>

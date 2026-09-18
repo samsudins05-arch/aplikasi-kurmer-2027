@@ -67,9 +67,13 @@ export interface SchoolIdentity {
   fase: string;
   namaGuru: string; // MUST BE EMPTY INITIALLY
   nipGuru: string; // MUST BE EMPTY INITIALLY
-  namaKepalaSekolah: string; // MUST BE EMPTY INITIALLY
-  nipKepalaSekolah: string; // MUST BE EMPTY INITIALLY
+  namaKepalaSekolah: string;
+  nipKepalaSekolah: string;
   tempatTanggalRapor: string;
+  // Extended fields for Biodata Sekolah & Rapor (Gambar 1.1, 2.1, 3.1)
+  nisNssNds?: string;
+  websiteSekolah?: string;
+  titimangsaBiodata?: string;
 }
 
 export interface Student {
@@ -88,6 +92,25 @@ export interface Student {
   kecamatan: string;
   kabupaten: string;
   provinsi: string;
+  // Extended Biodata fields (Gambar 3.1 Identitas Peserta Didik)
+  agama?: string;
+  statusKeluarga?: string;
+  anakKe?: string;
+  telepon?: string;
+  sekolahAsal?: string;
+  kelasDiterima?: string;
+  tanggalDiterima?: string;
+  namaAyah?: string;
+  namaIbu?: string;
+  alamatOrtu?: string;
+  teleponOrtu?: string;
+  pekerjaanAyah?: string;
+  pekerjaanIbu?: string;
+  namaWali?: string;
+  alamatWali?: string;
+  teleponWali?: string;
+  pekerjaanWali?: string;
+  fotoUrl?: string;
 }
 
 export interface Subject {

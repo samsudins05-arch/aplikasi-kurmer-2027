@@ -17,7 +17,11 @@ import {
   ExternalLink,
   Download,
   Loader2,
+  UserCheck,
+  BookOpen,
 } from 'lucide-react';
+import { CoverRaporPage, BiodataSekolahPage, BiodataSiswaPage } from './CetakKelasSatuPages';
+import { EditBiodataModal } from './EditBiodataModal';
 
 interface CetakRaporViewProps {
   rombelData: RombelData;
@@ -38,6 +42,12 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
   const subjects = rombelData.subjects;
   const identity = rombelData.identity;
 
+  // Deteksi khusus Kelas 1 (Rombel 1A, 1B, 1C, 1D, 1E atau Kelas 1)
+  const isKelas1 =
+    identity.kelas === 'Kelas 1' ||
+    identity.kelas === '1' ||
+    rombelData.rombelId.startsWith('1');
+
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
     initialStudentId || students[0]?.student_id || ''
   );
@@ -48,6 +58,14 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
   const [pdfProgressText, setPdfProgressText] = useState<string>('');
   const [pdfErrorMessage, setPdfErrorMessage] = useState<string | null>(null);
   const [logoLoadFailed, setLogoLoadFailed] = useState<boolean>(false);
+
+  // Lembar Rapor yang akan dicetak / diunduh (Khusus Kelas 1 otomatis aktif)
+  const [includeCover, setIncludeCover] = useState<boolean>(isKelas1);
+  const [includeSchoolBio, setIncludeSchoolBio] = useState<boolean>(isKelas1);
+  const [includeStudentBio, setIncludeStudentBio] = useState<boolean>(isKelas1);
+  const [includeNilai, setIncludeNilai] = useState<boolean>(true);
+  const [viewPreset, setViewPreset] = useState<'all' | 'cover' | 'school' | 'studentBio' | 'nilai' | 'custom'>('all');
+  const [isEditBioOpen, setIsEditBioOpen] = useState<boolean>(false);
 
   // Sync selected student if initialStudentId changes
   useEffect(() => {
@@ -115,6 +133,48 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
     }
     setSaveNotice('Data kehadiran dan catatan rapor berhasil disimpan!');
     setTimeout(() => setSaveNotice(null), 3500);
+  };
+
+  const handleSaveStudentBio = (updatedStudent: Student) => {
+    setRombelData((prev) => ({
+      ...prev,
+      students: prev.students.map((s) =>
+        s.student_id === updatedStudent.student_id ? updatedStudent : s
+      ),
+    }));
+    markDirty();
+    setSaveNotice(`Biodata peserta didik "${updatedStudent.nama}" berhasil diperbarui!`);
+    setTimeout(() => setSaveNotice(null), 3000);
+  };
+
+  const applyPreset = (preset: 'all' | 'cover' | 'school' | 'studentBio' | 'nilai') => {
+    setViewPreset(preset);
+    if (preset === 'all') {
+      setIncludeCover(true);
+      setIncludeSchoolBio(true);
+      setIncludeStudentBio(true);
+      setIncludeNilai(true);
+    } else if (preset === 'cover') {
+      setIncludeCover(true);
+      setIncludeSchoolBio(false);
+      setIncludeStudentBio(false);
+      setIncludeNilai(false);
+    } else if (preset === 'school') {
+      setIncludeCover(false);
+      setIncludeSchoolBio(true);
+      setIncludeStudentBio(false);
+      setIncludeNilai(false);
+    } else if (preset === 'studentBio') {
+      setIncludeCover(false);
+      setIncludeSchoolBio(false);
+      setIncludeStudentBio(true);
+      setIncludeNilai(false);
+    } else if (preset === 'nilai') {
+      setIncludeCover(false);
+      setIncludeSchoolBio(false);
+      setIncludeStudentBio(false);
+      setIncludeNilai(true);
+    }
   };
 
   const handlePrint = () => {
@@ -210,7 +270,7 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
   };
 
   // Fungsi presisi untuk menggambar garis dan teks footer di posisi tetap pada setiap halaman PDF
-  const drawFixedFooter = (pdf: jsPDF, student: Student, pageNum: number) => {
+  const drawFixedFooter = (pdf: jsPDF, student: Student, pageNum: number | string) => {
     const marginMm = 8;
     const pdfWidthMm = 210;
     const footerLineY = 286;
@@ -221,30 +281,34 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
     pdf.setLineWidth(0.25);
     pdf.line(marginMm, footerLineY, pdfWidthMm - marginMm, footerLineY);
 
-    // Teks sebelah kiri: nama siswa_nisn
+    // Teks sebelah kiri: [Rombel] | [Nama Siswa] | [NIS/NISN] (Sesuai Gambar 1.1, 2.1, 3.1)
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8.5);
     pdf.setTextColor(0, 0, 0);
-    const studentIdentifier = `${student.nama}_${student.nisn || student.nis || '-'}`;
+    const rombelCode = identity.rombel || identity.kelas || '1A';
+    const studentIdentifier = `${rombelCode} | ${student.nama} | ${student.nis || student.nisn || '-'}`;
     pdf.text(studentIdentifier, marginMm, footerTextY);
 
-    // Teks sebelah kanan: Halaman 1 dan seterusnya (sesuai nomor halaman)
-    pdf.text(`Halaman ${pageNum}`, pdfWidthMm - marginMm, footerTextY, { align: 'right' });
+    // Teks sebelah kanan: Halaman 1 dan seterusnya
+    const pageText = typeof pageNum === 'number' ? `Halaman ${pageNum}` : pageNum;
+    pdf.text(pageText, pdfWidthMm - marginMm, footerTextY, { align: 'right' });
   };
 
-  // Helper untuk menambahkan canvas per lembar (Halaman 1 atau Halaman 2) ke dokumen jsPDF dengan manajemen skala A4 presisi
+  // Helper untuk menambahkan canvas per lembar ke dokumen jsPDF dengan manajemen skala A4 presisi
   const addPageCanvasToPdf = (
     pdf: jsPDF,
     canvas: HTMLCanvasElement,
     student: Student,
-    pageNum: number,
-    isFirstPageOfDoc: boolean
+    pageNum: number | string,
+    isFirstPageOfDoc: boolean,
+    skipFooter: boolean = false
   ) => {
     const marginMm = 8;
     const pdfWidthMm = 210;
+    const pdfHeightMm = 297;
     const footerLineY = 286;
     const contentWidthMm = pdfWidthMm - 2 * marginMm; // 194 mm
-    const maxContentHeightMm = footerLineY - marginMm - 2; // 276 mm
+    const maxContentHeightMm = skipFooter ? (pdfHeightMm - 2 * marginMm) : (footerLineY - marginMm - 2); // 281 mm vs 276 mm
 
     const pxPerMm = canvas.width / contentWidthMm;
     const imgHeightMm = canvas.height / pxPerMm;
@@ -265,8 +329,10 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
       pdf.addImage(imgData, 'JPEG', offsetX, marginMm, scaledWidthMm, maxContentHeightMm);
     }
 
-    // Gambar footer resmi di posisi tetap (Y = 286 mm)
-    drawFixedFooter(pdf, student, pageNum);
+    // Gambar footer resmi di posisi tetap hanya jika TIDAK diskip (Cover, Biodata Sekolah, Biodata Siswa tanpa footer)
+    if (!skipFooter) {
+      drawFixedFooter(pdf, student, pageNum);
+    }
   };
 
   // Unduh PDF A4 Portrait resmi menggunakan jsPDF + html2canvas
@@ -293,22 +359,59 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
           throw new Error('Siswa belum dipilih untuk dicetak.');
         }
 
-        const page1El = document.getElementById(`rapor-page-1-${currentStudent.student_id}`);
-        const page2El = document.getElementById(`rapor-page-2-${currentStudent.student_id}`);
-
-        if (!page1El || !page2El) {
-          throw new Error(`Lembar rapor siswa "${currentStudent.nama}" tidak ditemukan di halaman.`);
+        const pagesToRender: { id: string; pageNum: string | number; label: string; skipFooter: boolean }[] = [];
+        if (includeCover) {
+          pagesToRender.push({
+            id: `rapor-page-cover-${currentStudent.student_id}`,
+            pageNum: 'Halaman 1',
+            label: 'Cover Rapor (Gambar 1.1)',
+            skipFooter: true,
+          });
+        }
+        if (includeSchoolBio) {
+          pagesToRender.push({
+            id: `rapor-page-school-${currentStudent.student_id}`,
+            pageNum: 'Halaman 1',
+            label: 'Biodata Sekolah (Gambar 2.1)',
+            skipFooter: true,
+          });
+        }
+        if (includeStudentBio) {
+          pagesToRender.push({
+            id: `rapor-page-student-bio-${currentStudent.student_id}`,
+            pageNum: 'Halaman 1',
+            label: 'Biodata Peserta Didik (Gambar 3.1)',
+            skipFooter: true,
+          });
+        }
+        if (includeNilai) {
+          pagesToRender.push({
+            id: `rapor-page-1-${currentStudent.student_id}`,
+            pageNum: 1,
+            label: 'Lembar 1: Nilai & Capaian TP',
+            skipFooter: false,
+          });
+          pagesToRender.push({
+            id: `rapor-page-2-${currentStudent.student_id}`,
+            pageNum: 2,
+            label: 'Lembar 2: Ekstrakurikuler s/d Tanda Tangan',
+            skipFooter: false,
+          });
         }
 
-        // Halaman 1 (Kop Sekolah, Identitas Siswa & Sekolah, A. Nilai & Capaian TP)
-        setPdfProgressText(`Memproses Halaman 1 (${currentStudent.nama})...`);
-        const canvas1 = await renderElementToCanvas(page1El);
-        addPageCanvasToPdf(pdf, canvas1, currentStudent, 1, true);
+        if (pagesToRender.length === 0) {
+          throw new Error('Pilih minimal satu lembar (Cover, Biodata, atau Nilai) untuk diunduh.');
+        }
 
-        // Halaman 2 (B. Ekstrakurikuler, C. Ketidakhadiran, D. Catatan Wali Kelas, Tanda Tangan)
-        setPdfProgressText(`Memproses Halaman 2: B. Ekstrakurikuler s/d Tanda Tangan (${currentStudent.nama})...`);
-        const canvas2 = await renderElementToCanvas(page2El);
-        addPageCanvasToPdf(pdf, canvas2, currentStudent, 2, false);
+        let isFirst = true;
+        for (const item of pagesToRender) {
+          const el = document.getElementById(item.id);
+          if (!el) continue;
+          setPdfProgressText(`Memproses ${item.label} (${currentStudent.nama})...`);
+          const canvas = await renderElementToCanvas(el);
+          addPageCanvasToPdf(pdf, canvas, currentStudent, item.pageNum, isFirst, item.skipFooter);
+          isFirst = false;
+        }
 
         const filename = `Rapor_A4_${currentStudent.nama.replace(/\s+/g, '_')}_${safeRombel}.pdf`;
         pdf.save(filename);
@@ -316,26 +419,62 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
         setSaveNotice(`File PDF "${filename}" berhasil diunduh dengan sempurna!`);
         setTimeout(() => setSaveNotice(null), 4000);
       } else {
-        // Mode Cetak Semua Siswa: Loop setiap siswa dan buat Halaman 1 & Halaman 2 secara berurutan
+        // Mode Cetak Semua Siswa: Loop setiap siswa dan buat lembar yang dipilih secara berurutan
         if (students.length === 0) {
           throw new Error('Tidak ada data siswa dalam rombel untuk diunduh.');
         }
 
+        let isFirstPage = true;
         for (let i = 0; i < students.length; i++) {
           const std = students[i];
-          const page1El = document.getElementById(`rapor-page-1-${std.student_id}`);
-          const page2El = document.getElementById(`rapor-page-2-${std.student_id}`);
-          if (!page1El || !page2El) continue;
+          const pagesToRender: { id: string; pageNum: string | number; label: string; skipFooter: boolean }[] = [];
+          if (includeCover) {
+            pagesToRender.push({
+              id: `rapor-page-cover-${std.student_id}`,
+              pageNum: 'Halaman 1',
+              label: 'Cover (Gambar 1.1)',
+              skipFooter: true,
+            });
+          }
+          if (includeSchoolBio) {
+            pagesToRender.push({
+              id: `rapor-page-school-${std.student_id}`,
+              pageNum: 'Halaman 1',
+              label: 'Biodata Sekolah (Gambar 2.1)',
+              skipFooter: true,
+            });
+          }
+          if (includeStudentBio) {
+            pagesToRender.push({
+              id: `rapor-page-student-bio-${std.student_id}`,
+              pageNum: 'Halaman 1',
+              label: 'Biodata Siswa (Gambar 3.1)',
+              skipFooter: true,
+            });
+          }
+          if (includeNilai) {
+            pagesToRender.push({
+              id: `rapor-page-1-${std.student_id}`,
+              pageNum: 1,
+              label: 'Lembar 1: Nilai & Capaian',
+              skipFooter: false,
+            });
+            pagesToRender.push({
+              id: `rapor-page-2-${std.student_id}`,
+              pageNum: 2,
+              label: 'Lembar 2: Ekskul s/d TTD',
+              skipFooter: false,
+            });
+          }
 
-          // Halaman 1 Siswa
-          setPdfProgressText(`Mengonversi rapor ${i + 1} dari ${students.length} siswa (${std.nama}) - Halaman 1...`);
-          const canvas1 = await renderElementToCanvas(page1El);
-          addPageCanvasToPdf(pdf, canvas1, std, 1, i === 0);
-
-          // Halaman 2 Siswa (B. Ekstrakurikuler berada di Halaman 2)
-          setPdfProgressText(`Mengonversi rapor ${i + 1} dari ${students.length} siswa (${std.nama}) - Halaman 2...`);
-          const canvas2 = await renderElementToCanvas(page2El);
-          addPageCanvasToPdf(pdf, canvas2, std, 2, false);
+          for (const item of pagesToRender) {
+            const el = document.getElementById(item.id);
+            if (!el) continue;
+            setPdfProgressText(`Mengonversi siswa ${i + 1} dari ${students.length} (${std.nama}) - ${item.label}...`);
+            const canvas = await renderElementToCanvas(el);
+            addPageCanvasToPdf(pdf, canvas, std, item.pageNum, isFirstPage, item.skipFooter);
+            isFirstPage = false;
+          }
         }
 
         const filename = `Rapor_A4_Semua_Siswa_${safeKelas}_${safeRombel}.pdf`;
@@ -360,6 +499,7 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
     const att = rombelData.attendance[student.student_id] || { sakit: null, izin: null, alpa: null };
     const note = rombelData.notes[student.student_id] || '';
     const studentEkskuls = rombelData.extracurriculars[student.student_id] || [];
+    const rombelCode = identity.rombel || identity.kelas || '1A';
 
     return (
       <div
@@ -367,13 +507,67 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
         id={`rapor-sheet-${student.student_id}`}
         className={`space-y-6 ${isBatchItem ? 'mb-12' : ''}`}
       >
-        {/* LEMBAR 1 (Halaman 1): Kop Sekolah, Identitas Siswa & Sekolah, dan A. Nilai dan Capaian TP */}
-        <div
-          id={`rapor-page-1-${student.student_id}`}
-          data-page="1"
-          style={{ backgroundColor: '#ffffff', color: '#000000' }}
-          className="rapor-page bg-white text-black p-6 sm:p-10 max-w-[210mm] mx-auto shadow-md border border-slate-200 print:p-0 print:border-none print:shadow-none print:break-after-page page-break-after"
-        >
+        {/* GAMBAR 1.1: COVER RAPOR (KHUSUS KELAS 1 / OPSIONAL) */}
+        {includeCover && (
+          <div className="rapor-section-cover">
+            <CoverRaporPage
+              student={student}
+              identity={identity}
+              rombelLabel={rombelCode}
+              isBatchItem={isBatchItem}
+            />
+            <div className="no-print my-6 border-t-2 border-dashed border-slate-300 relative text-center">
+              <span className="bg-slate-50 px-3 text-[11px] font-semibold text-slate-500 -top-2.5 relative">
+                Batas Halaman • Cover Rapor (Gambar 1.1) Selesai
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* GAMBAR 2.1: BIODATA SEKOLAH (KHUSUS KELAS 1 / OPSIONAL) */}
+        {includeSchoolBio && (
+          <div className="rapor-section-school-bio">
+            <BiodataSekolahPage
+              student={student}
+              identity={identity}
+              rombelLabel={rombelCode}
+              isBatchItem={isBatchItem}
+            />
+            <div className="no-print my-6 border-t-2 border-dashed border-slate-300 relative text-center">
+              <span className="bg-slate-50 px-3 text-[11px] font-semibold text-slate-500 -top-2.5 relative">
+                Batas Halaman • Biodata Sekolah (Gambar 2.1) Selesai
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* GAMBAR 3.1: BIODATA PESERTA DIDIK (KHUSUS KELAS 1 / OPSIONAL) */}
+        {includeStudentBio && (
+          <div className="rapor-section-student-bio">
+            <BiodataSiswaPage
+              student={student}
+              identity={identity}
+              rombelLabel={rombelCode}
+              isBatchItem={isBatchItem}
+            />
+            <div className="no-print my-6 border-t-2 border-dashed border-slate-300 relative text-center">
+              <span className="bg-slate-50 px-3 text-[11px] font-semibold text-slate-500 -top-2.5 relative">
+                Batas Halaman • Biodata Peserta Didik (Gambar 3.1) Selesai
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* LEMBAR NILAI & CAPAIAN BELAJAR (HALAMAN 1 & 2) */}
+        {includeNilai && (
+          <>
+            {/* LEMBAR 1 (Halaman 1): Kop Sekolah, Identitas Siswa & Sekolah, dan A. Nilai dan Capaian TP */}
+            <div
+              id={`rapor-page-1-${student.student_id}`}
+              data-page="1"
+              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+              className="rapor-page bg-white text-black p-6 sm:p-10 max-w-[210mm] mx-auto shadow-md border border-slate-200 print:p-0 print:border-none print:shadow-none print:break-after-page page-break-after"
+            >
           {/* Header Rapor: Tanpa Kop Sekolah (Standar A4 Portrait) atau Dengan Kop */}
           {includeKopSekolah ? (
             <div className="flex items-center gap-4 pb-3 border-b-2 border-black mb-4">
@@ -520,7 +714,7 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
 
           {/* Footer Lembar 1 */}
           <div className="rapor-sheet-footer pt-3 mt-6 border-t border-black flex justify-between items-center text-[10px] text-black">
-            <span className="font-medium">{student.nama}_{student.nisn || student.nis || '-'}</span>
+            <span className="font-medium">{rombelCode} | {student.nama} | {student.nis || student.nisn || '-'}</span>
             <span className="font-semibold">Halaman 1</span>
           </div>
         </div>
@@ -707,10 +901,12 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
 
           {/* Footer Lembar 2 */}
           <div className="rapor-sheet-footer pt-3 mt-8 border-t border-black flex justify-between items-center text-[10px] text-black">
-            <span className="font-medium">{student.nama}_{student.nisn || student.nis || '-'}</span>
+            <span className="font-medium">{rombelCode} | {student.nama} | {student.nis || student.nisn || '-'}</span>
             <span className="font-semibold">Halaman 2</span>
           </div>
         </div>
+        </>
+        )}
       </div>
     );
   };
@@ -874,6 +1070,154 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
         </div>
       )}
 
+      {/* Panel Pemilihan Lembar Halaman Cetak & Unduh PDF */}
+      <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-2xs no-print space-y-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-900">
+                Pilihan Lembar Dokumen Rapor
+              </h3>
+              {isKelas1 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  Khusus Kelas 1
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Centang halaman yang ingin ditampilkan di pratinjau, dicetak, atau disertakan dalam file PDF.
+            </p>
+          </div>
+
+          {/* Quick Preset Buttons */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => applyPreset('all')}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors cursor-pointer ${
+                includeCover && includeSchoolBio && includeStudentBio && includeNilai
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Semua Lembar
+            </button>
+            <button
+              type="button"
+              onClick={() => applyPreset('cover')}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors cursor-pointer ${
+                includeCover && !includeSchoolBio && !includeStudentBio && !includeNilai
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Cover (1.1)
+            </button>
+            <button
+              type="button"
+              onClick={() => applyPreset('school')}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors cursor-pointer ${
+                !includeCover && includeSchoolBio && !includeStudentBio && !includeNilai
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Bio Sekolah (2.1)
+            </button>
+            <button
+              type="button"
+              onClick={() => applyPreset('studentBio')}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors cursor-pointer ${
+                !includeCover && !includeSchoolBio && includeStudentBio && !includeNilai
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Bio Siswa (3.1)
+            </button>
+            <button
+              type="button"
+              onClick={() => applyPreset('nilai')}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors cursor-pointer ${
+                !includeCover && !includeSchoolBio && !includeStudentBio && includeNilai
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              Nilai Rapor
+            </button>
+          </div>
+        </div>
+
+        {/* Checkbox Group */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+          {/* Cover */}
+          <label className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+            includeCover ? 'bg-indigo-50/70 border-indigo-200' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-50'
+          }`}>
+            <input
+              type="checkbox"
+              checked={includeCover}
+              onChange={(e) => setIncludeCover(e.target.checked)}
+              className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">Cover Rapor</span>
+              <span className="text-[11px] text-slate-500 block">Gambar 1.1 • Sampul Resmi</span>
+            </div>
+          </label>
+
+          {/* Biodata Sekolah */}
+          <label className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+            includeSchoolBio ? 'bg-indigo-50/70 border-indigo-200' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-50'
+          }`}>
+            <input
+              type="checkbox"
+              checked={includeSchoolBio}
+              onChange={(e) => setIncludeSchoolBio(e.target.checked)}
+              className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">Biodata Sekolah</span>
+              <span className="text-[11px] text-slate-500 block">Gambar 2.1 • Identitas Satuan Pendidikan</span>
+            </div>
+          </label>
+
+          {/* Biodata Peserta Didik */}
+          <label className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+            includeStudentBio ? 'bg-indigo-50/70 border-indigo-200' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-50'
+          }`}>
+            <input
+              type="checkbox"
+              checked={includeStudentBio}
+              onChange={(e) => setIncludeStudentBio(e.target.checked)}
+              className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">Biodata Peserta Didik</span>
+              <span className="text-[11px] text-slate-500 block">Gambar 3.1 • Data Lengkap & Pas Foto</span>
+            </div>
+          </label>
+
+          {/* Nilai & Capaian */}
+          <label className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+            includeNilai ? 'bg-emerald-50/70 border-emerald-200' : 'bg-slate-50/50 border-slate-200 hover:bg-slate-50'
+          }`}>
+            <input
+              type="checkbox"
+              checked={includeNilai}
+              onChange={(e) => setIncludeNilai(e.target.checked)}
+              className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">Nilai & Capaian Belajar</span>
+              <span className="text-[11px] text-slate-500 block">Halaman 1 & 2 • TP, Ekskul, TTD</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
       {/* Student Selector & Direct Attendance / Notes Editor for the student (Hidden on print) */}
       {printMode === 'single' && currentStudent && (
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-2xs no-print space-y-4">
@@ -894,8 +1238,19 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
               </select>
             </div>
 
-            <div className="text-xs text-slate-500">
-              Menampilkan lembar rapor untuk <strong>{currentStudent.nama}</strong>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="text-xs text-slate-500">
+                Menampilkan lembar rapor untuk <strong>{currentStudent.nama}</strong>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditBioOpen(true)}
+                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Edit Biodata Lengkap Peserta Didik (Sesuai Gambar 3.1)"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Edit Biodata Lengkap (Gambar 3.1)</span>
+              </button>
             </div>
           </div>
 
@@ -1013,6 +1368,15 @@ export const CetakRaporView: React.FC<CetakRaporViewProps> = ({
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 no-print">
           <p className="text-xs">Belum ada siswa di {identity.rombel}. Tambahkan siswa untuk melihat dan mencetak rapor.</p>
         </div>
+      )}
+
+      {/* Modal Edit Biodata Peserta Didik (Gambar 3.1) */}
+      {isEditBioOpen && currentStudent && (
+        <EditBiodataModal
+          student={currentStudent}
+          onSave={handleSaveStudentBio}
+          onClose={() => setIsEditBioOpen(false)}
+        />
       )}
     </div>
   );
